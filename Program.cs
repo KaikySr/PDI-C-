@@ -7,88 +7,209 @@ using System.Drawing.Imaging;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-float[] rotation(float degree)
+(Bitmap bmp, float[] img) bilinear((Bitmap bmp, float[] img) org)
+{
+    float[] orgImg = org.img;
+    float[] newImg = new float[orgImg.Length];
+    int hei = org.bmp.Height;
+    int wid = org.bmp.Width;
+
+    for (int j = 0; j < hei; j++)
+    {
+        for (int i = 0; i < wid; i++)
+        {
+            int index = i + j * wid;
+            if (orgImg[index] > 0f ||
+                i == 0 || j == 0 ||
+                i == wid - 1 || j == hei - 1)
+            {
+                newImg[index] = orgImg[index];
+                continue;
+            }
+            var c1Index = i - 1 + (j - 1) * wid;
+            var c2Index = i + 1 + (j - 1) * wid;
+
+            var c3Index = i - 1 + (j + 1) * wid;
+            var c4Index = i + 1 + (j + 1) * wid;
+            bool flag = true;
+
+            while(orgImg[c1Index] == 0f || orgImg[c2Index] == 0f || orgImg[c3Index] == 0f || orgImg[c4Index] == 0f)
+            {
+                if(flag)
+                {
+                    if(c1Index >= 0 && c1Index < wid || c2Index >= 0 && c2Index < wid)
+                    {
+                        if(orgImg[c1Index] == 0f || orgImg[c2Index] == 0f)
+                        {
+                            c1Index -= wid;
+                            c2Index -= wid;
+                        }
+                        else if (orgImg[c3Index] == 0f || orgImg[c4Index] == 0f)
+                        {
+                            c3Index += wid;
+                            c4Index += wid;
+                        }
+                    }
+                        flag = false;
+                }
+                else
+                {
+                    if(c1Index >= 0 && c1Index < wid || c3Index >= 0 && c3Index < wid)
+                    {
+                        if(orgImg[c1Index] == 0f || orgImg[c3Index] == 0f)
+                        {
+                            c1Index -= 1;
+                            c3Index -= 1;
+                        }
+                        else if (orgImg[c2Index] == 0f || orgImg[c4Index] == 0f)
+                        {
+                            c2Index += 1;
+                            c4Index += 1;
+                        }
+                    }
+                    flag = true;
+                }
+            }
+            float a = (orgImg[c1Index] + orgImg[c2Index]) / 2;
+            float b = (orgImg[c3Index] + orgImg[c4Index]) / 2;
+            newImg[index] = (a + b) / 2;
+        }
+    }
+
+    var imgBytes = discretGray(newImg);
+    img(org.bmp, imgBytes);
+
+    return (org.bmp, newImg);
+}
+
+(Bitmap bmp, float[] img) resize((Bitmap bmp, float[] img) org,
+    float scaleX, float scaleY)
+{
+    int wid = org.bmp.Width;
+    int hei = org.bmp.Height;
+    Bitmap newBmp = new Bitmap(
+        (int)(scaleX * wid),
+        (int)(scaleY * hei)
+    );
+    int sWid = newBmp.Width;
+    int sHei = newBmp.Height;
+    float[] orgImg = org.img;
+    float[] newImg = new float[sWid * sHei];
+    for (int j = 0; j < hei; j++)
+    {
+        for (int i = 0; i < wid; i++)
+        {
+            newImg[i + j * sWid]
+                = orgImg[i + j * wid];
+        }
+    }
+    var imgBytes = discretGray(newImg);
+    var bmp = img(newBmp, imgBytes) as Bitmap;
+    var image = (bmp, newImg);
+
+    image = affine(image,
+        scale(scaleX, scaleY));
+
+    return image;
+}
+
+Matrix4x4 mat(params float[] arr)
+{
+    return new Matrix4x4(
+        arr[0], arr[1], arr[2], 0,
+        arr[3], arr[4], arr[5], 0,
+        arr[6], arr[7], arr[8], 0,
+             0,      0,      0, 1
+    );
+}
+
+Matrix4x4 rotation(float degree)
 {
     float radian = degree / 180 * MathF.PI;
     float cos = MathF.Cos(radian);
     float sin = MathF.Sin(radian);
-    return new float[]
-    {
+    return mat(
         cos, -sin, 0,
         sin,  cos, 0,
           0,    0, 1
-    };
+    );
 }
 
-float[] translate(float dx, float dy)
+Matrix4x4 translate(float dx, float dy)
 {
-    return new float[]
-    {
+    return mat(
         1, 0, dx,
         0, 1, dy,
         0, 0, 1
-    };
+    );
 }
 
-float[] translateFromSize(float dx, float dy,
+Matrix4x4 translateFromSize(float dx, float dy,
     (Bitmap bmp, float[] img) t)
 {
-    return new float[]
-    {
+    return mat(
         1, 0, dx * t.bmp.Width,
         0, 1, dy * t.bmp.Height,
         0, 0, 1
-    };
+    );
 }
 
-float[] scale(float dx, float dy)
+Matrix4x4 scale(float dx, float dy)
 {
-    return new float[]
-    {
+    return mat(
         dx, 0, 0,
         0, dy, 0,
         0, 0, 1
-    };
+    );
 }
 
-float[] shear(float cx, float cy)
+Matrix4x4 shear(float cx, float cy)
 {
-    return new float[]
-    {
+    return mat(
         1, cx, 0,
         cy, 1, 0,
         0, 0, 1
-    };
+    );
 }
 
 (Bitmap bmp, float[] img) affine((Bitmap bmp, float[] img) t,
-    params float[] p)
+    Matrix4x4 mat)
 {
+    float[] p = new float[]
+    {
+        mat.M11, mat.M12, mat.M13,
+        mat.M21, mat.M22, mat.M23,
+        mat.M31, mat.M32, mat.M33,
+    };
     var _img = t.img;
+    float[] nova = new float[_img.Length];
     int wid = t.bmp.Width;
     int hei = t.bmp.Height;
-    float[] newImg = new float[_img.Length];
-    
+    int x = 0;
+    int y = 0;
+    int index = 0;
+
     for (int i = 0; i < wid; i++)
     {
         for (int j = 0; j < hei; j++)
         {
-            int X = (int)((p[0] * i) + (p[1] * j) + p[2]); 
-            int Y = (int)((p[3] * i) + (p[4] * j) + p[5]);
-            
-            int index = i + j * wid;
-            int newIndex = X + Y * wid;
-           
-            if (X >= wid || Y >= hei || X < 0 || Y < 0)
+            x = (int)(p[0] * i + p[1] * j + p[2]);
+            y = (int)(p[3] * i + p[4] * j + p[5]);
+
+            if(x < 0 || x >= wid || y < 0 || y >= wid)
                 continue;
             else
-                newImg[newIndex] = _img[index];
+            {
+                index = (int)(x + y * wid);
+                nova[index] = _img[i+j * wid];
+            }
         }
     }
-    var Imgbytes = discretGray(newImg);
+
+    var Imgbytes = discretGray(nova);
     img(t.bmp, Imgbytes);
 
-    return (t.bmp, newImg);
+    return (t.bmp, nova);
 }
 
 (Bitmap bmp, float[] img) sobel((Bitmap bmp, float[] img) t,
@@ -102,9 +223,9 @@ float[] shear(float cx, float cy)
 
     for (int i = 1; i < wid - 1; i++)
     {
-        float sum = 
-            im[i + 0 * wid] + 
-            im[i + 1 * wid] + 
+        float sum =
+            im[i + 0 * wid] +
+            im[i + 1 * wid] +
             im[i + 2 * wid];
         for (int j = 1; j < hei - 1; j++)
         {
@@ -115,15 +236,15 @@ float[] shear(float cx, float cy)
             sum += im[index + 1];
         }
     }
-    
+
     for (int j = 1; j < hei - 1; j++)
     {
-        float seq = 
-            im[0 + j * wid] + 
+        float seq =
+            im[0 + j * wid] +
             im[1 + j * wid];
         for (int i = 1; i < wid - 1; i++)
         {
-            float nextSeq = 
+            float nextSeq =
                 im[i + j * wid] +
                 im[i + 1 + j * wid];
 
@@ -146,7 +267,7 @@ float[] shear(float cx, float cy)
 }
 
 (Bitmap bmp, float[] img) conv(
-    (Bitmap bmp, float[] img) t, float[] kernel)
+    (Bitmap bmp, float[] img) t, params float[] kernel)
 {
     var N = (int)Math.Sqrt(kernel.Length);
     var wid = t.bmp.Width;
@@ -164,14 +285,14 @@ float[] shear(float cx, float cy)
             {
                 for (int l = 0; l < N; l++)
                 {
-                    sum += _img[i + k - (N / 2) + (j + l - (N / 2)) * wid] * 
+                    sum += _img[i + k - (N / 2) + (j + l - (N / 2)) * wid] *
                         kernel[k + l * N];
                 }
             }
 
             if (sum > 1f)
                 sum = 1f;
-                
+
             else if (sum < 0f)
                 sum = 0f;
 
@@ -205,7 +326,7 @@ float[] shear(float cx, float cy)
         {
             if (kernel[j] == 0f)
                 continue;
-            
+
             int kx = j % tamKernel,
                 ky = j / tamKernel;
 
@@ -250,7 +371,7 @@ List<Rectangle> segmentation((Bitmap bmp, float[] img) t)
     var rects = segmentationT(t, 0);
     var areas = rects.Select(r => r.Width * r.Height);
     var average = areas.Average();
-    
+
     return rects
         .Where(r => r.Width * r.Height > average)
         .ToList();
@@ -272,7 +393,7 @@ List<Rectangle> segmentationT((Bitmap bmp, float[] img) t, int threshold)
     {
         if (img[i] > 0f)
             continue;
-        
+
         minx = int.MaxValue;
         miny = int.MaxValue;
         maxx = int.MinValue;
@@ -286,23 +407,23 @@ List<Rectangle> segmentationT((Bitmap bmp, float[] img) t, int threshold)
 
             if (j < 0 || j >= img.Length)
                 continue;
-            
+
             if (img[j] > 0f)
                 continue;
 
             int x = j % wid,
                 y = j / wid;
-            
+
             if (x < minx)
                 minx = x;
             if (x > maxx)
                 maxx = x;
-            
+
             if (y < miny)
                 miny = y;
             if (y > maxy)
                 maxy = y;
-            
+
             img[j] = crr;
             count++;
 
@@ -357,13 +478,13 @@ void otsu((Bitmap bmp, float[] img) t, float db = 0.05f)
         Dx1 -= value * value * histogram[i];
 
         float stddev =
-            Dx0 - N0 * Ex0 * Ex0 + 
+            Dx0 - N0 * Ex0 * Ex0 +
             Dx1 - N1 * Ex1 * Ex1;
-        
+
         if (float.IsInfinity(stddev) ||
             float.IsNaN(stddev))
             continue;
-        
+
         if (stddev < minstddev)
         {
             minstddev = stddev;
@@ -375,7 +496,7 @@ void otsu((Bitmap bmp, float[] img) t, float db = 0.05f)
     tresh(t, bestTreshold);
 }
 
-void tresh((Bitmap bmp, float[] img) t, 
+void tresh((Bitmap bmp, float[] img) t,
     float threshold = 0.5f)
 {
     for (int i = 0; i < t.img.Length; i++)
@@ -390,7 +511,7 @@ float[] equalization(
     int[] histogram = hist(t.img, db);
 
     int dropCount = (int)(t.img.Length * threshold);
-    
+
     float min = 0;
     int droped = 0;
     for (int i = 0; i < histogram.Length; i++)
@@ -416,7 +537,7 @@ float[] equalization(
     }
 
     var r = 1 / (max - min);
-    
+
     for (int i = 0; i < t.img.Length; i++)
     {
         float newValue = (t.img[i] - min) * r;
@@ -426,7 +547,7 @@ float[] equalization(
             newValue = 0f;
         t.img[i] = newValue;
     }
-    
+
     return t.img;
 }
 
@@ -465,14 +586,14 @@ Image drawHist(int[] hist)
     for (int i = 0; i < hist.Length; i++)
     {
         float bar = hist[i] * r;
-        g.FillRectangle(Brushes.Black, 
+        g.FillRectangle(Brushes.Black,
             margin + i * barlen,
-            bmp.Height - margin - bar, 
+            bmp.Height - margin - bar,
             barlen,
             bar);
-        g.DrawRectangle(Pens.DarkBlue, 
+        g.DrawRectangle(Pens.DarkBlue,
             margin + i * barlen,
-            bmp.Height - margin - bar, 
+            bmp.Height - margin - bar,
             barlen,
             bar);
     }
@@ -494,17 +615,17 @@ int[] hist(float[] img, float db = 0.05f)
 
     foreach (var pixel in img)
         histogram[(int)(pixel / db)]++;
-    
+
     return histogram;
 }
 
 float[] grayScale(float[] img)
 {
     float[] result = new float[img.Length / 3];
-    
+
     for (int i = 0, j = 0; i < img.Length; i += 3, j++)
     {
-        result[j] = 0.1f * img[i] + 
+        result[j] = 0.1f * img[i] +
             0.59f * img[i + 1] +
             0.3f * img[i + 2];
     }
@@ -515,7 +636,7 @@ float[] grayScale(float[] img)
 float[] continuous(byte[] img)
 {
     var result = new float[img.Length];
-    
+
     for (int i = 0; i < img.Length; i++)
         result[i] = img[i] / 255f;
 
@@ -525,7 +646,7 @@ float[] continuous(byte[] img)
 byte[] discret(float[] img)
 {
     var result = new byte[img.Length];
-    
+
     for (int i = 0; i < img.Length; i++)
         result[i] = (byte)(255 * img[i]);
 
@@ -535,7 +656,7 @@ byte[] discret(float[] img)
 byte[] discretGray(float[] img)
 {
     var result = new byte[3 * img.Length];
-    
+
     for (int i = 0; i < img.Length; i++)
     {
         var value = (byte)(255 * img[i]);
@@ -554,7 +675,7 @@ byte[] bytes(Image img)
         new Rectangle(0, 0, img.Width, img.Height),
         ImageLockMode.ReadOnly,
         PixelFormat.Format24bppRgb);
-    
+
     byte[] byteArray = new byte[3 * data.Width * data.Height];
 
     byte[] temp = new byte[data.Stride * data.Height];
@@ -581,9 +702,9 @@ Image img(Image img, byte[] bytes)
         new Rectangle(0, 0, img.Width, img.Height),
         ImageLockMode.ReadWrite,
         PixelFormat.Format24bppRgb);
-    
+
     byte[] temp = new byte[data.Stride * data.Height];
-    
+
     for (int j = 0; j < data.Height; j++)
     {
         for (int i = 0; i < 3 * data.Width; i++)
@@ -592,7 +713,7 @@ Image img(Image img, byte[] bytes)
                 bytes[i + j * 3 * data.Width];
         }
     }
-    
+
     Marshal.Copy(temp, 0, data.Scan0, temp.Length);
 
     bmp.UnlockBits(data);
@@ -635,10 +756,13 @@ void showRects((Bitmap bmp, float[] img) t, List<Rectangle> list)
 
     foreach (var rect in list)
         g.DrawRectangle(Pens.Red, rect);
-    
+
     showBmp(t.bmp);
 }
 
-var image = open("imagens/shuregui.png");
-image = affine(image, rotation(10f));
+var image = open("shuregui.png");
+
+image = resize(image, 1.1f, 1.1f);
+image = bilinear(image);
+
 show(image);

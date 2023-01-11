@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI.csproj": {}
+    "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI-C-\\PDI.csproj": {}
   },
   "projects": {
-    "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI.csproj": {
+    "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI-C-\\PDI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI.csproj",
+        "projectUniqueName": "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI-C-\\PDI.csproj",
         "projectName": "PDI",
-        "projectPath": "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI.csproj",
+        "projectPath": "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI-C-\\PDI.csproj",
         "packagesPath": "C:\\Users\\disrct\\.nuget\\packages\\",
-        "outputPath": "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\obj\\",
+        "outputPath": "S:\\COM\\Human_Resources\\01.Engineering_Tech_School\\02.Internal\\10 - Aprendizes\\14 - Desenvolvimento de sistemas 2022\\Kaiky Santos Ribeiro\\PDI\\PDI-C-\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\disrct\\AppData\\Roaming\\NuGet\\NuGet.Config",
